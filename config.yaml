@@ -1,0 +1,126 @@
+## config.yaml ##
+
+# === CONFIGURATION DU JEU SOCIETY ===
+# Ce fichier pilote les coefficients de production et les événements
+# sans avoir besoin de modifier le code Python.
+
+# --- Multiplicateurs saisonniers pour l’agriculture ---
+seasonal_agri:
+  spring: 0.7
+  summer: 1.0
+  autumn: 0.5
+  winter: 0.2
+
+# --- Règles de production par activité et par type de travailleur ---
+# Chaque entrée est la valeur de production. Tout ce qui n’est pas listé = 0.
+production_rules:
+  food_storage:       # 🥫
+    man: 100
+    woman: 0
+    pregnant: 0
+    child: 0
+    elder_m: 0
+    elder_f: 0
+    specialist_cook: 500
+
+  farming:            # 🌾
+    specialist_farmer: 30
+    man: 10
+    woman: 5
+    child: 5
+    elder_m: 0
+    elder_f: 0
+
+  fishing:            # 🐟
+    specialist_fisher: 30
+    man: 10
+    woman: 10
+    child: 10
+
+  hunting:            # 🦌
+    specialist_guard: 30
+    man: 10
+    woman: 5
+    child: 0
+
+  tools:              # 🔧
+    specialist_smith: 30
+    man: 10
+    woman: 15
+    child: 5
+
+  science:            # 🧪
+    specialist_scientist: 30
+    man: 10
+    woman: 10
+    child: 1
+
+  construction:       # 🏗
+    specialist_builder: 30
+    man: 20
+    woman: 5
+    child: 0
+
+  army:               # 🛡️
+    specialist_guard: 50
+    man: 20
+    woman: 5
+    child: 1
+
+  culture:            # 🎭 (en % des besoins)
+    specialist_artist: 100   # couvre 100 personnes
+    man: 25
+    woman: 25
+    elder_m: 25
+    elder_f: 25
+
+  education:          # 📚 (en % des enfants couverts)
+    specialist_teacher: 10   # couvre 10 enfants
+    man: 5
+    woman: 5
+    elder_m: 2
+    elder_f: 2
+
+  childcare:          # 👩‍🍼 (en % des bébés couverts)
+    specialist_nurse: 5   # couvre 5 bébés
+    woman: 2
+    man: 1
+    elder_m: 1
+    elder_f: 1
+
+# --- Événements aléatoires ---
+# prob: probabilité (0–1)
+# cooldown: nombre de tours avant réapparition possible
+# effects: liste d’effets
+events:
+  - name: "Invasion de loups"
+    prob: 0.1
+    cooldown: 6
+    effects:
+      - type: modify_flow_factor
+        flow: farming
+        factor: 0.8
+
+  - name: "Pluie abondante"
+    prob: 0.15
+    cooldown: 3
+    effects:
+      - type: modify_flow_factor
+        flow: farming
+        factor: 1.2
+
+  - name: "Épidémie infantile"
+    prob: 0.05
+    cooldown: 12
+    effects:
+      - type: modify_flow_factor_floor
+        flow: childcare
+        factor: 0.5
+
+  - name: "Marchands voyageurs"
+    prob: 0.08
+    cooldown: 8
+    effects:
+      - type: add_stock
+        resource: tools
+        amount: 50
