@@ -13,6 +13,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, Callable, Optional, List
 from datetime import datetime
+from pathlib import Path
 
 try:
     import yaml
@@ -280,12 +281,30 @@ GAME_MASTER_PROMPT = (
     "Be playful but concise. Do not invent new mechanics.\n"
 )
 
-def build_advisor_prompt(turn:int, tribe_state:dict, compact:str, last_orders:str, events:list)->str:
-    payload = {
-        "turn":turn, "season":tribe_state.get("season","summer"),
-        "state":tribe_state, "compact":compact, "last_orders":last_orders, "events":events
-    }
-    return GAME_MASTER_PROMPT + "\n[STATE_JSON]\n" + json.dumps(payload, ensure_ascii=False, indent=2)
+def build_advisor_prompt(report, history, events, last_actions):
+    """
+    Construit le prompt envoyé au LLM pour jouer le rôle du conseiller.
+    """
+    # Charger le texte statique
+    base_prompt = Path("build_advisor_prompt.md").read_text(encoding="utf-8")
+    # Ajouter les infos dynamiques
+    dynamic_context = f"""
+        # CONTEXTE ACTUEL
+
+        [REPORT COMPACT]
+        {report}
+
+        [HISTORIQUE RÉCENT]
+        {history}
+
+        [ÉVÉNEMENTS]
+        {events}
+
+        [DERNIÈRES ACTIONS DU JOUEUR]
+        {last_actions}
+        """
+    # Prompt final envoyé au LLM
+    return base_prompt + "\n" + dynamic_context
 
 def openai_llm_call(prompt:str)->str:
     try:
@@ -330,7 +349,7 @@ def render_compact(report:dict, assign:Assignments, demo:Demographics)->str:
     ]
     return "\\n".join(lines)
 
-HISTORY_PATH="/mnt/data/history.md"
+HISTORY_PATH="history.md"
 def append_history_md(turn:int, compact:str, narrative:str, orders:str, events:list):
     ts = datetime.utcnow().isoformat(timespec="seconds")
     with open(HISTORY_PATH,"a",encoding="utf-8") as f:
@@ -355,7 +374,7 @@ def run_turn_console(tribe:'Tribe', assign:'Assignments', last_orders:str, inert
     print("\\nConseiller >\\n", advisor)
     print("\\nÉvénements >")
     for e in events: print(" -", e)
-    print("\\nHistorique:", "/mnt/data/history.md")
+    print("\\nHistorique:", "history.md")
 
 __all__ = [
     "Demographics","Assignments","Resources","Tribe",
