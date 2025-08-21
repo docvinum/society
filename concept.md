@@ -4,46 +4,50 @@ Voici l’architecture, la logique et le process de jeu pour une version console
 
 ```
 society/
-  assets/
-    config.yaml                # barèmes, saisons, événements, difficultés, projets
-    examples/
-      sample_save.json
-  src/
-    engine/
-      __init__.py
-      model.py                 # état du monde: Demographics, Assignments, Resources, Projects, TribeState
-      rules.py                 # barèmes de prod, saison, coûts, limites, durabilité outils
-      difficulty.py            # presets de difficulté, modificateurs réalistes
-      projects.py              # logique projets multi-tours, jalons, pause, reprise, annulation
-      events.py                # EventSpec, EventEngine, effets mécaniques
-      inertia.py               # inertie avec cooldown par filière et cap de réaffectation par tour
-      sim.py                   # step(): applique actions validées, calcule flux, stock, natalité, mortalité soft
-      validate.py              # validation des actions JSON, clamp, feedback
-      io_state.py              # sauvegarde, chargement, history.md, snapshots
-      render.py                # render_compact(), vues console pour choix et feedback
-      config.py                # charge YAML, fusionne overrides, expose accès typé
-    llm/
-      advisor.py               # conseiller: prompt builder + appel LLM
-      parser.py                # interprète les ordres libres → actions JSON chiffrées
-      prompts/
-        advisor_master.md
-        parser_master.md
-        style_guidelines.md    # adaptation au ton du joueur
-      schemas/
-        actions.schema.json    # contrat JSON entre parser LLM et moteur
-    cli/
-      game.py                  # boucle interactive multi-tours, input libre + choix 1..3
-      commands.py              # :save, :load, :quit, :config, :help
-      colors.py                # helpers couleurs/emoji console
-  tests/
-    test_engine.py             # prod, conso, stockage, saison, inertie
-    test_projects.py           # jalons, pause, reprise, annulation
-    test_parser_contract.py    # conformité au schema JSON
-  README.md
-  INSTALL.md
-  requirements.txt
-  LICENSE
+├── assets/
+│   ├── config.yaml
+│   └── examples/
+├── src/
+│   └── society/
+│       ├── __init__.py
+│       ├── cli/
+│       │   ├── __init__.py
+│       │   ├── colors.py
+│       │   ├── commands.py
+│       │   └── game.py
+│       ├── engine/
+│       │   ├── __init__.py
+│       │   ├── config.py
+│       │   ├── difficulty.py
+│       │   ├── events.py
+│       │   ├── inertia.py
+│       │   ├── io_state.py
+│       │   ├── model.py
+│       │   ├── projects.py
+│       │   ├── render.py
+│       │   ├── rules.py
+│       │   └── sim.py
+│       └── llm/
+│           ├── __init__.py
+│           ├── advisor.py
+│           ├── parser.py
+│           ├── prompts/
+│           │   ├── advisor_master.md
+│           │   ├── parser_master.md
+│           │   └── style_guidelines.md
+│           └── schemas/
+│               └── actions.schema.json
+├── INSTALL.md
+├── README.md
+└── requirements.txt
 ```
+
+## Fichiers clés à ouvrir
+  * Config réaliste: assets/config.yaml
+  * Boucle console squelette: src/society/cli/game.py
+  * Conseiller LLM: src/society/llm/advisor.py
+  * Interpréteur d’ordres: src/society/llm/parser.py
+  * Schéma d’actions: src/society/llm/schemas/actions.schema.json
 
 # Logique du code
 
@@ -103,11 +107,17 @@ society/
   * Passe l’entrée libre au **parser LLM** → JSON d’actions.
   * Valide via `validate.py`, applique via `sim.step()`.
   * Supporte `:save file.json`, `:load file.json`, `:quit`.
+  * Affiche le **compact** et l’état des **projets** (ligne par projet: état, jalon en cours, %).
+  * Appelle le **conseiller** pour narration et 3 choix.
+  * Demande **input**: un numéro 1..3, un texte libre, ou une commande.
+  * Passe le texte libre au **parser** pour actions JSON.
+  * Affiche un **récapitulatif** des actions interprétées et clampées avant application.
+  * Applique `sim.step()` et journalise via `io_state.append_history`.
+
 * `cli/commands.py`
-
   * Petites commandes utilitaires.
-* `engine/io_state.py`
 
+* `engine/io_state.py`
   * Sauvegardes, rechargements, `history.md` enrichi par tour.
 
 ## 4) Difficulté réaliste
@@ -123,7 +133,7 @@ society/
 
 Toutes ces valeurs viennent de `config.yaml` via un bloc `difficulty.presets.realistic`.
 
-## 2) Projets multi-tours
+## 5) Projets multi-tours
 
 `projects.py` gère des **ProjectSpec** définis en YAML:
 
@@ -138,7 +148,7 @@ Toutes ces valeurs viennent de `config.yaml` via un bloc `difficulty.presets.rea
 
 `sim.step()` fait avancer tous les projets actifs selon l’allocation et applique les gains.
 
-## 3) Parser LLM avec réallocation chiffrée automatique
+## 6) Parser LLM avec réallocation chiffrée automatique
 
 `llm/parser.py` traduit l’input libre en **actions JSON canoniques** et **chiffre** même si le joueur est ambigu:
 
@@ -162,7 +172,7 @@ Toutes ces valeurs viennent de `config.yaml` via un bloc `difficulty.presets.rea
 
 `validate.py` filtre, **clamp** les deltas, verrouille les spécialistes à leur filière, renvoie des `notes` pour tout ce qui est ajusté.
 
-## 4) Conseiller LLM
+## 7) Conseiller LLM
 
 `llm/advisor.py`:
 
@@ -170,7 +180,7 @@ Toutes ces valeurs viennent de `config.yaml` via un bloc `difficulty.presets.rea
 * Produit un texte balisé `[NARRATION] [BILAN] [OPPORTUNITÉS] [CHOIX]` avec 3 choix.
 * Le ton s’adapte au style détecté du joueur via `style_guidelines.md` et indices simples (ponctuation, émojis, vocabulaire).
 
-## 5) Moteur de simulation
+## 8) Moteur de simulation
 
 `sim.py` applique dans cet ordre:
 
@@ -184,17 +194,6 @@ Toutes ces valeurs viennent de `config.yaml` via un bloc `difficulty.presets.rea
 8. **Événements mécaniques**: tirages YAML, facteurs sur flux, retards de jalon, blessés.
 9. **Démographie**: natalité selon seuils, sevrage, mortalité soft en cas de pénurie.
 10. **Rapport**: objet `Report` avec `flows`, `stocks`, `coverage`, `projects_status`, `notes`.
-
-## 6) Console
-
-`cli/game.py`:
-
-* Affiche le **compact** et l’état des **projets** (ligne par projet: état, jalon en cours, %).
-* Appelle le **conseiller** pour narration et 3 choix.
-* Demande **input**: un numéro 1..3, un texte libre, ou une commande.
-* Passe le texte libre au **parser** pour actions JSON.
-* Affiche un **récapitulatif** des actions interprétées et clampées avant application.
-* Applique `sim.step()` et journalise via `io_state.append_history`.
 
 # Process de jeu
 
